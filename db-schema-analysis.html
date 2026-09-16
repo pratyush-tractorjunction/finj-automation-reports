@@ -806,28 +806,29 @@ erDiagram
   - Webhook callback updates \`transactions.status='SUCCESS'\`, \`payments.total_outflow += amount\`, and \`payments.balance_amount -= amount\`.
 `;
 
-  // Parse markdown with default renderer (works with all marked versions)
-  const content = document.getElementById('content');
-  content.innerHTML = marked.parse(md);
+  // marked.parse() returns a Promise in v9+, a string in older versions.
+  // Promise.resolve() normalises both cases.
+  (async () => {
+    const content = document.getElementById('content');
+    const html = await Promise.resolve(marked.parse(md));
+    content.innerHTML = html;
 
-  // Post-process: wrap every bare <table> in a scroll div
-  content.querySelectorAll('table').forEach(t => {
-    if (t.parentElement.classList.contains('table-wrap')) return;
-    const wrap = document.createElement('div');
-    wrap.className = 'table-wrap';
-    t.parentNode.insertBefore(wrap, t);
-    wrap.appendChild(t);
-  });
+    // Wrap every <table> in a horizontally-scrollable div
+    content.querySelectorAll('table').forEach(t => {
+      if (t.parentElement.classList.contains('table-wrap')) return;
+      const wrap = document.createElement('div');
+      wrap.className = 'table-wrap';
+      t.parentNode.insertBefore(wrap, t);
+      wrap.appendChild(t);
+    });
 
-  // Post-process: add section IDs to h2 elements
-  let sec = 0;
-  content.querySelectorAll('h2').forEach(h => {
-    sec++;
-    h.id = 'section-' + sec;
-  });
+    // Stamp section IDs onto every <h2>
+    let sec = 0;
+    content.querySelectorAll('h2').forEach(h => { h.id = 'section-' + (++sec); });
 
-  // Run mermaid on fenced code blocks with class language-mermaid
-  mermaid.run({ nodes: document.querySelectorAll('code.language-mermaid') }).catch(() => {});
+    // Render mermaid diagrams (inside <code class="language-mermaid">)
+    mermaid.run({ nodes: document.querySelectorAll('code.language-mermaid') }).catch(() => {});
+  })();
 </script>
 </body>
 </html>
