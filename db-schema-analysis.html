@@ -242,9 +242,6 @@
     }
   });
 
-  // Configure marked
-  marked.setOptions({ breaks: true, gfm: true });
-
   const md = `# Complete Database Schema, Table Relationships, and End-to-End Data Flow Analysis
 
 This comprehensive architectural and data analysis document is derived directly from the MySQL database dump (\`tj_finance\` containing **262 tables**, 421 migrations, and live UAT records) hosted in the Docker container \`tj-finance-db\`, cross-verified against Cypress end-to-end workflows (\`cypress/e2e/Page_object_model/leadEndToEndPage.js\`), permission matrices (\`permissions\`, \`menus\`), and migration schemas.
@@ -809,26 +806,28 @@ erDiagram
   - Webhook callback updates \`transactions.status='SUCCESS'\`, \`payments.total_outflow += amount\`, and \`payments.balance_amount -= amount\`.
 `;
 
-  // Custom renderer to wrap tables
-  const renderer = new marked.Renderer();
-  renderer.table = (header, body) =>
-    '<div class="table-wrap"><table><thead>' + header + '</thead><tbody>' + body + '</tbody></table></div>';
+  // Parse markdown with default renderer (works with all marked versions)
+  const content = document.getElementById('content');
+  content.innerHTML = marked.parse(md);
 
-  // Add section IDs to h2 headings
-  let sectionCounter = 0;
-  renderer.heading = (text, level) => {
-    const tag = 'h' + level;
-    if (level === 2) {
-      sectionCounter++;
-      return '<' + tag + ' id="section-' + sectionCounter + '">' + text + '</' + tag + '>';
-    }
-    return '<' + tag + '>' + text + '</' + tag + '>';
-  };
+  // Post-process: wrap every bare <table> in a scroll div
+  content.querySelectorAll('table').forEach(t => {
+    if (t.parentElement.classList.contains('table-wrap')) return;
+    const wrap = document.createElement('div');
+    wrap.className = 'table-wrap';
+    t.parentNode.insertBefore(wrap, t);
+    wrap.appendChild(t);
+  });
 
-  document.getElementById('content').innerHTML = marked.parse(md, { renderer });
+  // Post-process: add section IDs to h2 elements
+  let sec = 0;
+  content.querySelectorAll('h2').forEach(h => {
+    sec++;
+    h.id = 'section-' + sec;
+  });
 
-  // Run mermaid on code blocks
-  mermaid.run({ nodes: document.querySelectorAll('.language-mermaid') }).catch(() => {});
+  // Run mermaid on fenced code blocks with class language-mermaid
+  mermaid.run({ nodes: document.querySelectorAll('code.language-mermaid') }).catch(() => {});
 </script>
 </body>
 </html>
