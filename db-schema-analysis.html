@@ -1,0 +1,834 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>TJ Finance DB Schema &amp; Data Flow Analysis</title>
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+  <style>
+    :root {
+      --bg: #0f1117;
+      --surface: #1a1d27;
+      --border: #2a2d3e;
+      --text: #e2e8f0;
+      --muted: #94a3b8;
+      --accent: #6366f1;
+      --accent2: #22d3ee;
+      --green: #10b981;
+      --yellow: #f59e0b;
+      --red: #ef4444;
+      --code-bg: #12151f;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+      font-size: 15px;
+      line-height: 1.7;
+      padding: 0;
+    }
+
+    /* ── Top Banner ── */
+    header {
+      background: linear-gradient(135deg, #1e1b4b 0%, #0f172a 50%, #134e4a 100%);
+      border-bottom: 1px solid var(--border);
+      padding: 32px 40px 28px;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      backdrop-filter: blur(8px);
+    }
+    header h1 {
+      font-size: 1.45rem;
+      font-weight: 700;
+      background: linear-gradient(90deg, #818cf8, #22d3ee);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    header p {
+      font-size: 0.82rem;
+      color: var(--muted);
+      margin-top: 6px;
+    }
+    .badges {
+      display: flex;
+      gap: 10px;
+      margin-top: 12px;
+      flex-wrap: wrap;
+    }
+    .badge {
+      font-size: 0.72rem;
+      font-weight: 600;
+      padding: 3px 10px;
+      border-radius: 20px;
+      letter-spacing: 0.4px;
+    }
+    .badge-purple { background: #312e81; color: #a5b4fc; border: 1px solid #4338ca; }
+    .badge-teal   { background: #134e4a; color: #5eead4; border: 1px solid #0d9488; }
+    .badge-yellow { background: #451a03; color: #fcd34d; border: 1px solid #d97706; }
+
+    /* ── Content wrapper ── */
+    main {
+      max-width: 1300px;
+      margin: 0 auto;
+      padding: 40px 40px 80px;
+    }
+
+    /* ── Headings ── */
+    h1 { font-size: 2rem; font-weight: 800; margin: 48px 0 16px;
+         background: linear-gradient(90deg, #818cf8, #22d3ee);
+         -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+    h2 { font-size: 1.45rem; font-weight: 700; color: #a5b4fc;
+         border-bottom: 2px solid var(--border); padding-bottom: 10px; margin: 44px 0 18px; }
+    h3 { font-size: 1.1rem; font-weight: 600; color: #67e8f9; margin: 32px 0 12px; }
+    h4 { font-size: 0.95rem; font-weight: 600; color: #94a3b8; margin: 24px 0 8px; }
+
+    /* ── Paragraphs ── */
+    p { color: var(--text); margin: 10px 0; }
+
+    /* ── Tables ── */
+    .table-wrap { overflow-x: auto; margin: 20px 0; border-radius: 10px;
+                  border: 1px solid var(--border); }
+    table { border-collapse: collapse; width: 100%; min-width: 800px; font-size: 0.82rem; }
+    thead tr { background: linear-gradient(90deg, #1e1b4b, #134e4a); }
+    thead th { padding: 12px 14px; text-align: left; font-weight: 600;
+               color: #e2e8f0; border-bottom: 2px solid var(--border); white-space: nowrap; }
+    tbody tr { border-bottom: 1px solid var(--border); transition: background 0.15s; }
+    tbody tr:hover { background: rgba(99,102,241,0.07); }
+    tbody tr:last-child { border-bottom: none; }
+    td { padding: 10px 14px; vertical-align: top; color: var(--text); }
+    td:first-child { font-weight: 600; color: #a5b4fc; white-space: nowrap; }
+
+    /* ── Code blocks ── */
+    pre {
+      background: var(--code-bg);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 20px;
+      overflow-x: auto;
+      font-size: 0.82rem;
+      line-height: 1.6;
+      margin: 18px 0;
+      color: #94f5c1;
+      font-family: 'Cascadia Code', 'Fira Code', 'Consolas', monospace;
+    }
+    code {
+      background: rgba(99,102,241,0.15);
+      color: #a5b4fc;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-size: 0.85em;
+      font-family: 'Cascadia Code', 'Fira Code', 'Consolas', monospace;
+    }
+    pre code { background: transparent; color: inherit; padding: 0; }
+
+    /* ── Lists ── */
+    ul, ol { padding-left: 22px; margin: 10px 0; }
+    li { margin: 5px 0; color: var(--text); }
+    li strong { color: #e2e8f0; }
+
+    /* ── HR ── */
+    hr { border: none; border-top: 1px solid var(--border); margin: 36px 0; }
+
+    /* ── Blockquotes ── */
+    blockquote {
+      border-left: 4px solid var(--accent);
+      background: rgba(99,102,241,0.08);
+      padding: 14px 20px;
+      border-radius: 0 8px 8px 0;
+      margin: 16px 0;
+      color: var(--muted);
+    }
+
+    /* ── Mermaid diagrams ── */
+    .mermaid {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 28px;
+      margin: 24px 0;
+      overflow-x: auto;
+      text-align: center;
+    }
+
+    /* ── Back-to-top ── */
+    #toc-panel {
+      position: fixed;
+      right: 24px;
+      top: 140px;
+      width: 220px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 16px;
+      font-size: 0.76rem;
+      max-height: calc(100vh - 180px);
+      overflow-y: auto;
+      display: none;
+    }
+    @media(min-width: 1600px) { #toc-panel { display: block; } }
+    #toc-panel h5 { color: var(--accent2); font-size: 0.75rem; font-weight: 700;
+                    text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 10px; }
+    #toc-panel a { display: block; color: var(--muted); text-decoration: none;
+                   padding: 3px 0; border-radius: 4px; transition: color 0.15s; }
+    #toc-panel a:hover { color: var(--text); }
+
+    /* ── Back button ── */
+    #back-top {
+      position: fixed; bottom: 30px; right: 30px;
+      background: var(--accent); color: white;
+      border: none; border-radius: 50%; width: 46px; height: 46px;
+      font-size: 1.3rem; cursor: pointer; box-shadow: 0 4px 20px rgba(99,102,241,0.4);
+      display: flex; align-items: center; justify-content: center;
+      transition: transform 0.2s;
+    }
+    #back-top:hover { transform: translateY(-3px); }
+
+    strong { color: #e2e8f0; }
+    a { color: #67e8f9; text-decoration: none; }
+    a:hover { text-decoration: underline; }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>🗄️ TJ Finance — Database Schema &amp; Data Flow Analysis</h1>
+  <p>Generated from live Docker database dump · <code>tj_finance</code> UAT environment · September 2026</p>
+  <div class="badges">
+    <span class="badge badge-purple">262 Tables</span>
+    <span class="badge badge-teal">421 Migrations</span>
+    <span class="badge badge-yellow">58,247 Leads</span>
+    <span class="badge badge-purple">Laravel + MySQL 8.0</span>
+    <span class="badge badge-teal">Cypress Automation</span>
+  </div>
+</header>
+
+<div id="toc-panel">
+  <h5>Quick Nav</h5>
+  <a href="#section-1">1. DB Schema</a>
+  <a href="#section-2">2. Relationships</a>
+  <a href="#section-3">3. Data Flow</a>
+  <a href="#section-4">4. Stage Updates</a>
+  <a href="#section-5">5. API Mapping</a>
+  <a href="#section-6">6. Lifecycle</a>
+  <a href="#section-7">7. Status Transitions</a>
+  <a href="#section-8">8. Read vs Write</a>
+  <a href="#section-9">9. Dependencies</a>
+  <a href="#section-10">10. ER Diagram</a>
+  <a href="#section-11">11. Findings</a>
+  <a href="#section-12">12. QA Reference</a>
+</div>
+
+<main id="content"></main>
+
+<button id="back-top" onclick="window.scrollTo({top:0,behavior:'smooth'})" title="Back to top">↑</button>
+
+<script>
+  // Configure mermaid
+  mermaid.initialize({
+    startOnLoad: false,
+    theme: 'dark',
+    themeVariables: {
+      primaryColor: '#312e81',
+      primaryTextColor: '#e2e8f0',
+      primaryBorderColor: '#6366f1',
+      lineColor: '#6366f1',
+      secondaryColor: '#134e4a',
+      tertiaryColor: '#1a1d27',
+      background: '#0f1117'
+    }
+  });
+
+  // Configure marked
+  marked.setOptions({ breaks: true, gfm: true });
+
+  const md = `# Complete Database Schema, Table Relationships, and End-to-End Data Flow Analysis
+
+This comprehensive architectural and data analysis document is derived directly from the MySQL database dump (\`tj_finance\` containing **262 tables**, 421 migrations, and live UAT records) hosted in the Docker container \`tj-finance-db\`, cross-verified against Cypress end-to-end workflows (\`cypress/e2e/Page_object_model/leadEndToEndPage.js\`), permission matrices (\`permissions\`, \`menus\`), and migration schemas.
+
+---
+
+## Table of Contents
+1. [Complete Database Schema (Domain-Wise Breakdown)](#1-complete-database-schema-domain-wise-breakdown)
+2. [Table Relationships](#2-table-relationships)
+3. [End-to-End Data Flow](#3-end-to-end-data-flow)
+4. [Stage / Status-Wise Database Updates](#4-stage--status-wise-database-updates)
+5. [API → Database Mapping](#5-api--database-mapping)
+6. [Data Lifecycle](#6-data-lifecycle)
+7. [Status Transition Mapping](#7-status-transition-mapping)
+8. [Read vs Write Analysis](#8-read-vs-write-analysis)
+9. [Cross-Module Dependencies](#9-cross-module-dependencies)
+10. [Entity-Relationship (ER) & Data-Flow Diagram](#10-entity-relationship-er--data-flow-diagram)
+11. [Important Architectural Findings](#11-important-architectural-findings)
+12. [Developer & QA Quick Reference Guide](#12-developer--qa-quick-reference-guide)
+
+---
+
+## 1. Complete Database Schema (Domain-Wise Breakdown)
+
+The application centers on **Asset Financing & Loan Lifecycle Management** (Tractor & Commercial Vehicles). Below is the breakdown across all 8 functional domains:
+
+### Module A: Lead Management & Sourcing Core
+| Table Name | Purpose | Primary Key | Foreign / Logical Keys | Important Columns | Status / State Columns | Audit & Soft-Delete |
+| :--- | :--- | :--- | :--- | :--- | :--- | :--- |
+| **\`leads\`** | Main business entity representing a loan applicant/lead | \`id\` (int auto) | \`borrower_id\` (UUID), \`agent_id\` (\`users.id\`), \`partner_id\` (\`partners.id\`), \`state_id\`, \`district_id\`, \`tehsil_id\`, \`follow_up_id\` | \`name\`, \`mobile\`, \`loan_amount\`, \`out_flow_amount\`, \`vehicle_type\`, \`reg_no\`, \`brand_name\`, \`model_name\`, \`source\`, \`platform\`, \`active_until\` | \`status\` (OPEN, FI, LOGIN, DISBURSED, etc.), \`payment_status\`, \`payment_flag\`, \`payout_status\`, \`rc_limit_status\` | \`created_at\`, \`updated_at\`, \`created_date\`, \`updated_date\` (No soft-delete; cancellation tracked in \`lead_cancellation_details\`) |
+| **\`lead_follow_ups\`** | Tracks iterative lead progress, lender assignment, and sanction details | \`id\` (int auto) | \`lead_id\` (\`leads.id\`), \`lender_id\` (\`lenders.id\`), \`old_agent_id\` (\`users.id\`) | \`product_category\`, \`lender_name\`, \`lender_spoc_name\`, \`lender_spoc_number\`, \`application_id\`, \`loan_amount\`, \`disbursed_amount\`, \`disbursal_receipt\`, \`amount_credited_to\` | \`status\` (OPEN, FI, LOGIN, OPS CHECK PENDING, APPROVED, VERIFICATION PENDING, DISBURSED, REJECTED, CUSTOMER CANCELLATION), \`flag\`, \`disbursment_verified\` | \`created_at\`, \`updated_at\` |
+| **\`loan_profile\`** | Underwriting and lender sanction terms | \`id\` (int auto) | \`lead_id\` (\`leads.id\`), \`user_id\` (\`users.id\`) | \`rtr\`, \`rc\`, \`ltv\`, \`land_size\`, \`cibil_score\`, \`tenure\`, \`interest_rate\`, \`frequency\` (monthly/quarterly/half_yearly), \`cibil_pdf\` | \`status\`, \`user_cibil_consent\` | \`created_at\`, \`updated_at\`, \`cibil_requested_at\` |
+| **\`lead_history\`** | Immutable audit log of every lead stage and status transition | \`id\` (int auto) | \`lead_id\` (\`leads.id\`), \`lead_follow_up_id\` (\`lead_follow_ups.id\`), \`user_id\` (\`users.id\`) | \`user_role\`, \`reporting_manager_id\`, \`user_hierarchy\`, \`level\`, \`tat\`, \`remark\`, \`platform\` | \`old_status\`, \`new_status\` | \`created_at\`, \`updated_at\` |
+| **\`lead_cancellation_details\`** | Records reasons, refunds, and proof when a case is cancelled | \`id\` (bigint auto) | \`lead_id\` (\`leads.id\`), \`lead_follow_up_id\` (\`lead_follow_ups.id\`), \`user_id\` (\`users.id\`) | \`reason\`, \`remark\`, \`refund_amount\`, \`utr\`, \`cancel_reference_document\` | N/A (Terminal cancellation record) | \`created_at\` |
+| **\`generic_leads\`** / **\`web_leads\`** / **\`mahindra_leads\`** | External and partner lead staging tables | \`id\` (int auto) | \`lead_id\` | \`lead_type\`, \`lead_data\` (JSON), \`mobile\`, \`source\` | \`status\` | \`created_at\`, \`updated_at\` |
+
+---
+
+### Module B: Borrower & Dealer Identity & KYC (Normalized Schema)
+| Table Name | Purpose | Primary Key | Foreign / Logical Keys | Important Columns | Status / State Columns | Audit & Soft-Delete |
+| :--- | :--- | :--- | :--- | :--- | :--- | :--- |
+| **\`borrower_details\`** | Master entity for borrower profile | \`borrower_id\` (char(36) UUID) | \`created_by\`, \`updated_by\` (\`users.id\`) | \`first_name\`, \`last_name\`, \`mobile_number\`, \`aadhaar_mobile_number\`, \`email\`, \`dob\`, \`gender\`, \`metadata\` | \`status\` (APPROVED, BLOCKED, REJECTED, BLACKLISTED), \`is_active\` | \`created_at\`, \`updated_at\` |
+| **\`borrower_bank_details\`** | Bank account records of borrower with penny-drop verification | \`borrower_bank_detail_id\` (char(36) UUID) | \`borrower_id\` (\`borrower_details.borrower_id\`), \`bank_proof_document_id\` | \`account_number\`, \`ifsc_code\`, \`bank_name\`, \`account_holder_name\`, \`skip_reason\` | \`is_verified\`, \`verified_by\` (PENNY_DROP, MANUAL, SYSTEM_FAILED), \`name_match_status\` (MATCHED, MISMATCH), \`penny_drop_skipped\` | \`created_at\`, \`updated_at\`, \`verified_at\` |
+| **\`borrower_kyc_details\`** | Aadhaar, PAN, and GST document records | \`borrower_kyc_id\` (char(36) UUID) | \`borrower_id\` (\`borrower_details.borrower_id\`), \`ocr_id\`, \`kyc_front_document_id\`, \`kyc_back_document_id\` | \`kyc_type\` (AADHAAR, PAN, GST), \`masked_number\`, \`hashed_kyc_number\` | \`status\` (PENDING, APPROVED, REJECTED), \`name_matched\`, \`is_ocr_verified\` | \`created_at\`, \`updated_at\`, \`verified_at\`, \`expiry_at\` |
+| **\`dealer_details\`** | Master entity for dealership / seller / third-party receiver | \`dealer_id\` (char(36) UUID) | \`lender_id\`, \`created_by\`, \`updated_by\` | \`business_name\`, \`entity_type\` (INDIVIDUAL, COMPANY, BANK), \`business_proof_type\` (GST, MSME, TRADE_LICENSE), \`signatory_relation\` | \`status\` (APPROVED, BLOCKED, REJECTED, BLACKLISTED), \`is_active\` | \`created_at\`, \`updated_at\` |
+| **\`dealer_bank_details\`** | Bank accounts of dealers/sellers for disbursal outflow | \`dealer_bank_detail_id\` (char(36) UUID) | \`dealer_id\` (\`dealer_details.dealer_id\`), \`bank_proof_document_id\` | \`account_number\`, \`ifsc_code\`, \`bank_name\`, \`account_holder_name\` | \`is_verified\`, \`verified_by\`, \`name_match_status\` | \`created_at\`, \`updated_at\` |
+
+---
+
+### Module C: Payments, Inflow, Outflow & Banking Integration
+| Table Name | Purpose | Primary Key | Foreign / Logical Keys | Important Columns | Status / State Columns | Audit & Soft-Delete |
+| :--- | :--- | :--- | :--- | :--- | :--- | :--- |
+| **\`payments\`** | Central payment ledger per lead; balances inflows vs outflows | \`id\` (int auto) | \`lead_id\` (\`leads.id\`), \`agent_id\` (\`users.id\`), \`ops_verified_by\` (\`users.id\`) | \`balance_amount\`, \`total_inflow\`, \`pending_inflow\`, \`total_outflow\`, \`pending_outflow\`, \`pdd_hold\`, \`pp_hold\`, \`hypo_hold\` | \`status\` (INITIATED, IN PROGRESS, PARTIALLY PAID, FULLY PAID), \`inflow_status\`, \`outflow_status\`, \`ops_verification\`, \`pdd_uploaded\` | \`created_at\`, \`updated_at\`, \`finance_in_date\` |
+| **\`payment_in_flows\`** | Lender disbursement received into Finj bank accounts | \`id\` (int auto) | \`payment_id\` (\`payments.id\`), \`verified_by\` (\`users.id\`) | \`utr_no\`, \`amount\`, \`payment_slip\`, \`payment_proof\`, \`date\`, \`platform\` | \`status\` (PENDING, APPROVED, REJECTED) | \`created_at\`, \`updated_at\` |
+| **\`payment_details\`** | Outflow disbursement line-items to seller/dealer/third-party | \`id\` (int auto) | \`payment_id\` (\`payments.id\`), \`payment_bank_id\` (\`payment_banks.id\`), \`f_verify_by\` (\`users.id\`), \`s_verify_by\` (\`users.id\`) | \`payment_type\`, \`amount\`, \`deduction_type\`, \`deduction_amount\`, \`utr_no\`, \`payee_bank_utr\`, \`transaction_receipt\`, \`tp_declaration\` | \`status\` (INITIATED, IN PROGRESS, FULLY PAID, REJECTED), \`transaction_status\`, \`credit_status\` | \`created_at\`, \`updated_at\`, \`finance_confirm\` |
+| **\`payment_holds\`** | Structured holds deducted from disbursement | \`id\` (bigint auto) | \`lead_id\` (\`leads.id\`), \`payment_id\` (\`payments.id\`), \`created_by\`, \`updated_by\` | \`hold_type\` (ops, retail, noc, challan, pdd, pp, hypo), \`amount\`, \`percentage\`, \`trigger_conditions\` | \`is_active\`, \`is_deducted\`, \`is_final\` | \`created_at\`, \`updated_at\`, **\`deleted_at\`** (Soft-delete enabled) |
+| **\`payment_banks\`** | Company and payee bank account configurations | \`id\` (int auto) | \`user_id\` | \`bank_name\`, \`account_no\`, \`ifsc\`, \`branch\`, \`account_type\` | \`status\`, \`is_active\` | \`created_at\`, \`updated_at\` |
+| **\`transactions\`** | Core banking transaction engine (NEFT/RTGS payouts via Axis/Razorpay/Pazy) | \`id\` (bigint auto) | \`lead_id\` (\`leads.id\`), \`payment_id\` (\`payments.id\`), \`transaction_request_id\` | \`process_id\`, \`utr\`, \`from_account\`, \`payee_name\`, \`to_account\`, \`ifsc_code\`, \`amount\`, \`provider\` (AXIS, RAZORPAY, PAZY), \`transfer_type\` (NE, RT, FT), \`duplicate_key\` | \`status\` (SUCCESS, PENDING, FAILED), \`status_reconciliation\` (PENDING, DONE, FAILED), \`is_duplicate\` | \`created_at\`, \`updated_at\`, \`created_date\` |
+| **\`transaction_integrations\`** | Inbound payment requests from subsystems (FINJ, VMS, INHOUSE) | \`id\` (bigint auto) | \`transaction_id\` (\`transactions.id\`), \`integration_id\` | \`platform_payment_id\`, \`reg_no\`, \`amount\`, \`payee_name\`, \`to_account\`, \`ifsc_code\`, \`duplicate_key\`, \`platform\` | \`payment_status\`, \`online_status\`, \`is_duplicate\` | \`created_at\`, \`updated_at\` |
+| **\`outflow_otp_logs\`** | Two-factor authentication logs for payment approval | \`id\` (int auto) | \`payment_detail_id\`, \`user_id\` | \`mobile\`, \`otp\`, \`admin_notified_at\` | \`is_verified\` | \`created_at\`, \`updated_at\` |
+
+---
+
+### Module D: Partner & Field Officer Payouts & Commission Engine
+| Table Name | Purpose | Primary Key | Foreign / Logical Keys | Important Columns | Status / State Columns | Audit & Soft-Delete |
+| :--- | :--- | :--- | :--- | :--- | :--- | :--- |
+| **\`payouts\`** | Lead payout master record | \`id\` (int auto) | \`lead_id\` (\`leads.id\`), \`agent_id\` (\`users.id\`) | \`disbursment_date\`, \`files_count\`, \`categories_count\`, \`recalculate_at\` | \`status\` (INITIATED, PENDING, CONFIRM, MONTHLY INITIATED, MONTHLY PAID, QUARTERLY PAID), \`is_recalculate\` | \`created_at\`, \`updated_at\` |
+| **\`payout_details\`** | Computational breakdown: base commission, caveat penalties, TDS | \`id\` (int auto) | \`payout_id\` (\`payouts.id\`), \`monthly_transaction_id\` (\`transactions.id\`), \`quarterly_transaction_id\` | \`base_percentage\`, \`base_amount\`, \`irr_caveat_penalty\`, \`tenure_caveat_penalty\`, \`pdd_cut_percentage\`, \`monthly_amount\`, \`monthly_utr\`, \`quarterly_amount\`, \`quarterly_utr\`, \`tds_amount\` | \`pdd_compliance_status\`, \`is_monthly_online\`, \`monthly_online_status\`, \`is_quarterly_online\` | \`created_at\`, \`updated_at\` |
+| **\`payout_amount_histories\`** | Comprehensive audit log of payout calculations and manual overrides | \`id\` (bigint auto) | \`lead_id\`, \`payout_id\`, \`user_id\` (\`users.id\`) | \`old_amount\`, \`old_eligible_percentage\`, \`new_amount\`, \`new_eligible_percentage\`, \`user_name\`, \`remark\` | \`status\` | \`created_at\`, \`updated_at\` |
+| **\`partners\`** | Channel partner master directory | \`id\` (int auto) | \`user_id\`, \`state_id\`, \`district_id\`, \`tehsil_id\` | \`name\`, \`business_name\`, \`mobile\`, \`pan_number\`, \`bank_account_no\`, \`ifsc_code\` | \`status\`, \`is_active\` | \`created_at\`, \`updated_at\` |
+
+---
+
+### Module E: Post-Disbursal, RC Transfer, RTO & PDD Compliance
+| Table Name | Purpose | Primary Key | Foreign / Logical Keys | Important Columns | Status / State Columns | Audit & Soft-Delete |
+| :--- | :--- | :--- | :--- | :--- | :--- | :--- |
+| **\`rc_limit\`** | Operations verification check sheet before and after sanction | \`id\` (int auto) | \`lead_id\` (\`leads.id\`), \`user_id\` (\`users.id\`) | \`chassis_no\`, \`engine_no\`, \`fo_noc_status\`, \`ops_noc_status\`, \`foreclosure_amount\`, \`challan_cost\`, \`operation_cost\`, \`retail_hold\` | \`vahan_status\`, \`decision\` (APPROVED, REJECTED), \`case_flagged\` (RED, YELLOW, GREEN), \`is_deducted\`, \`is_final\` | \`created_at\`, \`updated_at\`, \`submitted_at\` |
+| **\`rc_checks\`** | Post-disbursal RC transfer tracking across RTOs | \`id\` (bigint auto) | \`lead_id\` (\`leads.id\`), \`assigned_to\` (\`users.id\`), \`case_status_updated_by\` | \`rc_number\`, \`borrower_name\`, \`lender\`, \`disbursed_date\`, \`case_ageing\`, \`foreclosure_utr\`, \`foreclosure_transaction_date\` | \`case_status\` (matches \`rc_statuses\`), \`doc_status\` (Complete, Incomplete), \`risk_category\` (Super Critical, Critical, Threshold, Controlled) | \`created_at\`, \`updated_at\`, \`status_date\` |
+| **\`vahaan_details\`** | Parivahan national registry telemetry cache (64 columns) | \`id\` (bigint auto) | \`rc_number\` (logical link to \`leads.reg_no\`) | \`owner_name\`, \`vehicle_chasi_number\`, \`vehicle_engine_number\`, \`maker_model\`, \`financer\`, \`fit_up_to\`, \`insurance_upto\`, \`tax_paid_upto\` | \`financed\` (boolean), \`blacklist_status\`, \`rc_status\` | \`created_at\`, \`updated_at\` |
+| **\`pdd_pendencies\`** | Post Disbursement Documents collection tracker | \`id\` (int auto) | \`lead_id\` (\`leads.id\`) | \`pdd_document_name\`, \`courier_name\`, \`tracking_number\`, \`submission_date\` | \`status\` (PENDING, RECEIVED, REJECTED) | \`created_at\`, \`updated_at\` |
+
+---
+
+### Module F: Document Management, OCR & Digital Signatures (Digitap)
+| Table Name | Purpose | Primary Key | Foreign / Logical Keys | Important Columns | Status / State Columns | Audit & Soft-Delete |
+| :--- | :--- | :--- | :--- | :--- | :--- | :--- |
+| **\`documents\`** | Central document repository (PAN, Bank Proof, RC, etc.) | \`id\` (int auto) | \`lead_id\` (\`leads.id\`), \`user_id\` (\`users.id\`) | \`page\`, \`step\`, \`name\`, \`file\` (path/Cloudinary URL), \`title\`, \`type\` | \`status\` (APPROVE, REJECT) | \`created_at\`, \`updated_at\` |
+| **\`lead_agreements\`** | Master container for e-signed loan undertaking agreements | \`lead_agreement_id\` (char(36) UUID) | \`lead_id\` (\`leads.id\`), \`payment_detail_id\` (\`payment_details.id\`), \`final_document_id\` | \`master_document_type_id\`, \`master_template_id\`, \`agreement_version\`, \`expiry_at\` | \`status\` (DRAFT, IN_PROGRESS, COMPLETED, CANCELLED, FAILED), \`is_active\` | \`created_at\`, \`updated_at\` |
+| **\`lead_agreement_signings\`** | Multi-party signature tracking (Borrower, Dealer, Co-Borrower) | \`lead_agreement_signing_id\` (char(36) UUID) | \`lead_agreement_id\` (\`lead_agreements.lead_agreement_id\`), \`party_id\` | \`party_role\` (BORROWER, DEALER, REGISTERED_OWNER, CO_BORROWER), \`signer_name\`, \`signer_mobile\`, \`sign_url\`, \`job_id\`, \`returned_signer_name\`, \`returned_aadhaar_suffix\` | \`status\` (PENDING, UPLOADED, SENT, SIGNED, FAILED, EXPIRED), \`identity_match_status\` (MATCHED, MISMATCH) | \`created_at\`, \`updated_at\`, \`sent_at\`, \`signed_at\`, \`last_sms_sent_at\` |
+| **\`document_ocr_verifications\`**| OCR verification results matching against lead fields | \`id\` (bigint auto) | \`lead_id\` (\`leads.id\`), \`document_id\` (\`documents.id\`) | \`extracted_data\` (JSON), \`confidence_score\`, \`verified_by\` | \`verification_status\` (PASSED, FAILED, MANUAL_OVERRIDE) | \`created_at\`, \`updated_at\`, **\`deleted_at\`** (Soft-delete enabled) |
+
+---
+
+### Module G: Turnaround Time (TAT) Engine
+| Table Name | Purpose | Primary Key | Foreign / Logical Keys | Important Columns | Status / State Columns | Audit & Soft-Delete |
+| :--- | :--- | :--- | :--- | :--- | :--- | :--- |
+| **\`tat_cases\`** | Aggregated case-level SLA metrics | \`case_key\` (bigint auto) | \`lead_id\` (\`leads.id\`), \`agent_id\` (\`users.id\`) | \`reg_no\`, \`customer_name\`, \`lender_name\`, \`disbursed_amount\`, \`e2e_tat_seconds\`, \`current_stage_code\`, \`current_owner_team\` | \`outcome\`, \`is_rejected\`, \`has_breach\`, \`payment_status\` | \`created_at\`, \`updated_at\`, \`disbursed_at\`, \`completed_at\` |
+| **\`tat_case_stages\`**| Individual stage-level timer transitions | \`id\` (bigint auto) | \`case_key\` (\`tat_cases.case_key\`), \`lead_id\` (\`leads.id\`), \`owner_user_id\` (\`users.id\`) | \`stage_code\`, \`stage_seq\`, \`owner_team\` (FO, RST, OPS, SH, FIN), \`entry_time\`, \`exit_time\`, \`tat_seconds\`, \`sla_seconds\` | \`decision\`, \`is_breached\` | \`created_at\`, \`updated_at\` |
+
+---
+
+### Module H: Access Control (RBAC), Users & System Audit
+| Table Name | Purpose | Primary Key | Foreign / Logical Keys | Important Columns | Status / State Columns | Audit & Soft-Delete |
+| :--- | :--- | :--- | :--- | :--- | :--- | :--- |
+| **\`users\`** | Application employees (FO, Ops, Finance, SH, HR, etc.) | \`id\` (int auto) | \`reporting_manager_id\` (\`users.id\`), \`department_id\`, \`state_id\`, \`district_id\` | \`name\`, \`email\`, \`mobile\`, \`employee_code\`, \`pan_number\`, \`bank_account_no\`, \`exited_at\` | \`status\`, \`is_active\`, \`is_acl_applicable\` | \`created_at\`, \`updated_at\` |
+| **\`roles\`** / **\`permissions\`** | Spatie RBAC definition | \`id\` (bigint auto) | \`guard_name\` | \`name\`, \`guard_name\` | \`is_dynamic_support_role\` | \`created_at\`, \`updated_at\` |
+| **\`model_has_roles\`** | Maps users to roles | \`role_id\` + \`model_id\` + \`model_type\` | \`role_id\` (\`roles.id\`), \`model_id\` (\`users.id\`) | \`model_type\` (\`App\\Models\\User\`), \`is_primary\` | N/A | N/A |
+| **\`menus\`** | Dynamic UI route and access control tree | \`id\` (bigint auto) | \`parent_id\` (\`menus.id\`), \`permission_id\` (\`permissions.id\`) | \`title\`, \`menu_key\`, \`slug\`, \`route\`, \`order\` | \`is_active\`, \`is_visible\` | \`created_at\`, \`updated_at\`, **\`deleted_at\`** |
+| **\`activity_log\`** | Spatie application audit logging | \`id\` (bigint auto) | \`causer_id\` (\`users.id\`), \`subject_id\` | \`log_name\`, \`description\`, \`subject_type\`, \`event\`, \`properties\` (JSON) | N/A | \`created_at\`, \`updated_at\` |
+
+---
+
+## 2. Table Relationships
+
+Relationships in \`tj_finance\` operate primarily through **application-level Eloquent models** rather than hard database foreign key constraints. Only ~25 foreign keys exist at the DDL level; all others are linked by logical integer/UUID keys.
+
+\`\`\`
+       [users] (Hierarchical Parent)
+          │
+          ├── (1:N) ── [leads] (Central Entity)
+          │               │
+          │               ├── (1:N) ── [lead_follow_ups] (Stage / Status Iterations)
+          │               ├── (1:1) ── [loan_profile] (Underwriting & Terms)
+          │               ├── (1:N) ── [documents] (Uploaded Identity & KYC Proofs)
+          │               ├── (1:N) ── [lead_history] (Status Audit Trail)
+          │               ├── (1:1) ── [rc_limit] (OPS Checks & Hold Calculations)
+          │               ├── (1:1) ── [rc_checks] (Post-Disbursal RTO Tracking)
+          │               ├── (1:1) ── [payments] (Financial Settlement Ledger)
+          │               │               │
+          │               │               ├── (1:N) ── [payment_in_flows] (Lender Inflows)
+          │               │               ├── (1:N) ── [payment_details] (Beneficiary Outflows)
+          │               │               └── (1:N) ── [payment_holds] (NOC, Challan, PDD Holds)
+          │               │
+          │               ├── (1:1) ── [payouts] (Agent & Partner Commission)
+          │               │               │
+          │               │               ├── (1:1) ── [payout_details] (Caveat Calculations)
+          │               │               └── (1:N) ── [payout_amount_histories]
+          │               │
+          │               ├── (1:N) ── [lead_agreements] (Digitap Digital Undertakings)
+          │               │               │
+          │               │               ├── (1:N) ── [lead_agreement_signings]
+          │               │               └── (1:N) ── [lead_agreement_logs]
+          │               │
+          │               └── (1:1) ── [tat_cases] (SLA Tracking)
+          │                               └── (1:N) ── [tat_case_stages]
+          │
+          └── (1:N) ── [transactions] (Core Banking NEFT/RTGS Engine)
+\`\`\`
+
+### Relationship Classifications:
+
+#### 1. One-to-One Relationships (1:1)
+* **\`leads\` ↔ \`loan_profile\`**: Parent: \`leads.id\` → Child: \`loan_profile.lead_id\`. Contains underwriting metrics (LTV, CIBIL, interest rate, tenure, EMI frequency) for a specific lead.
+* **\`leads\` ↔ \`payments\`**: Parent: \`leads.id\` → Child: \`payments.lead_id\`. Central settlement ledger capturing aggregate inflow, outflow, and net balance.
+* **\`leads\` ↔ \`payouts\`**: Parent: \`leads.id\` → Child: \`payouts.lead_id\`. Base record for computing agent commissions.
+* **\`payouts\` ↔ \`payout_details\`**: Parent: \`payouts.id\` → Child: \`payout_details.payout_id\`. Breakdown of base commission, caveat deductions, monthly/quarterly payouts.
+* **\`leads\` ↔ \`rc_limit\`**: Parent: \`leads.id\` → Child: \`rc_limit.lead_id\`. OPS verification checks, NOC clearance, and hold recommendations.
+* **\`leads\` ↔ \`rc_checks\`**: Parent: \`leads.id\` → Child: \`rc_checks.lead_id\`. Tracks RTO transfer and RC card status after loan disbursal.
+* **\`leads\` ↔ \`tat_cases\`**: Parent: \`leads.id\` → Child: \`tat_cases.lead_id\`. High-level SLA case record.
+
+#### 2. One-to-Many Relationships (1:N)
+* **\`leads\` ↔ \`lead_follow_ups\`**: Parent: \`leads.id\` → Child: \`lead_follow_ups.lead_id\`. Every stage transition (FI, Login, Ops Check, Approval, VP, Disbursed) inserts or updates a follow-up iteration.
+* **\`leads\` ↔ \`documents\`**: Parent: \`leads.id\` → Child: \`documents.lead_id\`. Documents uploaded per step (PAN, Aadhaar, RC, Bank Statement, Disbursal Receipt, Cancelled Cheque).
+* **\`leads\` ↔ \`lead_history\`**: Parent: \`leads.id\` → Child: \`lead_history.lead_id\`. Immutable historical log of all status transitions, actors, and remarks.
+* **\`payments\` ↔ \`payment_in_flows\`**: Parent: \`payments.id\` → Child: \`payment_in_flows.payment_id\`. Tracks one or more lender incoming payments (UTR, amount, date, proof slip).
+* **\`payments\` ↔ \`payment_details\`**: Parent: \`payments.id\` → Child: \`payment_details.payment_id\`. Multiple outflow payment disbursements to dealers, sellers, or third parties.
+* **\`payments\` ↔ \`payment_holds\`**: Parent: \`payments.id\` → Child: \`payment_holds.payment_id\`. Multiple hold line-items (NOC hold, Challan hold, PDD hold, Hypothecation hold).
+* **\`lead_agreements\` ↔ \`lead_agreement_signings\`**: Parent: \`lead_agreements.lead_agreement_id\` → Child: \`lead_agreement_signings.lead_agreement_id\`. Separate signature entries for Borrower, Dealer, and Co-Borrower.
+* **\`tat_cases\` ↔ \`tat_case_stages\`**: Parent: \`tat_cases.case_key\` → Child: \`tat_case_stages.case_key\`. Records entry time, exit time, and duration for every milestone.
+* **\`users\` ↔ \`users\` (Self-referencing Hierarchy)**: Parent: \`users.id\` → Child: \`users.reporting_manager_id\`. Manages hierarchy: FO → Area Manager / Team Lead → Cluster Head → State Head → Zonal Head → National Head.
+
+#### 3. Many-to-Many Relationships (M:N)
+* **\`users\` ↔ \`roles\`**: Pivot: **\`model_has_roles\`** (\`role_id\` → \`roles.id\`, \`model_id\` → \`users.id\`, \`model_type\` = \`'App\\Models\\User'\`).
+* **\`roles\` ↔ \`permissions\`**: Pivot: **\`role_has_permissions\`** (\`permission_id\` → \`permissions.id\`, \`role_id\` → \`roles.id\`).
+* **\`leads\` ↔ \`mitigants\`**: Pivot: **\`lead_mitigants\`** (\`lead_id\` → \`leads.id\`, \`mitigant_id\` → \`mitigants.id\`).
+* **\`leads\` ↔ \`rto_works\`**: Pivot: **\`lead_rto_works\`** (\`lead_id\` → \`leads.id\`, \`rto_work_id\` → \`rto_works.id\`).
+
+---
+
+## 3. End-to-End Data Flow
+
+Data moves sequentially through 11 operational and financial milestones:
+
+\`\`\`
+[1. LEAD CREATION] ──> [2. FIELD INVESTIGATION (FI)] ──> [3. RC LIMIT CHECK]
+                                                                │
+[6. SANCTION & APPROVAL] <── [5. OPS CHECK VERIFICATION] <── [4. LENDER LOGIN]
+       │
+       ▼
+[7. VERIFICATION PENDING (VP)] ──> [8. DISBURSEMENT (DISBURSED)]
+                                            │
+                                            ▼
+[11. POST-DISBURSAL PDD & RC] <── [10. OUTFLOW & SETTLEMENT] <── [9. INFLOW (LENDER FUNDS)]
+\`\`\`
+
+### Detailed Milestone Flow:
+
+1. **Lead Creation & Sourcing**:
+   - **Trigger**: FO or Partner submits \`POST /lead/create\` (UI: \`StepA\`, \`StepB\`, \`StepC\`, \`StepD\`).
+   - **Tables Created/Updated**: Record inserted in \`leads\` (\`status='OPEN'\`), \`lead_follow_ups\` (\`status='OPEN'\`), and initial photos/PAN uploaded into \`documents\`.
+   - **Linkage**: \`leads.id\` generated and attached as \`documents.lead_id\` and \`lead_follow_ups.lead_id\`. An entry is recorded in \`lead_history\`.
+
+2. **Field Investigation (FI)**:
+   - **Trigger**: Field Officer visits applicant; triggers Experian/CIBIL check and uploads KYC documents via \`POST /lead/update-status\` (\`status='FI'\`).
+   - **Tables Created/Updated**: \`lead_follow_ups.status='FI'\`, \`leads.status='FI'\`. Borrower credit profile recorded in \`loan_profile\` (\`cibil_score\`, \`cibil_pdf\`). Vahan telemetry queried from Parivahan API and stored in \`vahaan_details\`.
+   - **Linkage**: Linked via \`lead_id\` and \`reg_no\`.
+
+3. **RC Limit & Pre-Sanction Inspection**:
+   - **Trigger**: OPS checks vehicle hypothecation, NOC, and challan details.
+   - **Tables Created/Updated**: Record inserted/updated in \`rc_limit\` (\`fo_noc_status\`, \`vahan_status\`, \`challan_cost\`, \`decision='APPROVED'\`, \`case_flagged='GREEN'\`). Hold recommendations populated in \`payment_holds\`.
+
+4. **Lender File Login (LOGIN)**:
+   - **Trigger**: Field Officer / Support logs case with banking partner (RBL Bank, TVS Credit, Mahindra Finance, etc.) via \`StepFiToLogin\`.
+   - **Tables Created/Updated**: \`lead_follow_ups\` updated with \`status='LOGIN'\`, \`lender_id\`, \`lender_name\`, \`application_id\`, \`lender_spoc_name\`, \`lender_spoc_number\`. \`leads.status='LOGIN'\`, \`lead_history\` logged.
+
+5. **Operations Check (OPS CHECK PENDING)**:
+   - **Trigger**: Central Operations team verifies KYC, bank statements, and Parivahan records (\`StepLoginToOps\`).
+   - **Tables Created/Updated**: \`lead_follow_ups.status='OPS CHECK PENDING'\`, \`rc_limit\` values verified (\`ops_noc_status\`, \`ops_hypothecation\`). If passed, status moves to \`OPS CHECK PASSED\`; if discrepancies found, moves to \`OPS CHECK FAILED\` and reverts to \`LOGIN\`.
+
+6. **Sanction & Approval (APPROVED)**:
+   - **Trigger**: Lender approves loan amount and issues sanction letter (\`stepsOpsToApproved\`).
+   - **Tables Created/Updated**: \`lead_follow_ups\` updated with \`status='APPROVED'\`, \`loan_amount\`. \`loan_profile\` updated with sanctioned \`tenure\`, \`interest_rate\`. Entry logged in \`tat_case_stages\`.
+
+7. **Verification Pending (VP)**:
+   - **Trigger**: Disbursal documentation uploaded (\`stepsApprovedToVP\`): Disbursal receipt, declaration letter, repayment frequency (Monthly/Quarterly), credit destination (\`amount_credited_to='agrowheels'\`).
+   - **Tables Created/Updated**: \`lead_follow_ups\` updated with \`status='VERIFICATION PENDING'\`, \`disbursal_receipt\`, \`disbursment_receipt='Yes'\`. \`documents\` stores signed declarations.
+
+8. **Disbursement (DISBURSED)**:
+   - **Trigger**: Loan marked disbursed by Ops/Finance (\`stepsVPToDisbursal\`).
+   - **Tables Created/Updated**:
+     - \`leads.status='DISBURSED'\`.
+     - \`lead_follow_ups.status='DISBURSED'\`, \`lead_follow_ups.date=NOW()\`.
+     - New parent record initialized in **\`payments\`** (\`lead_id\`, \`balance_amount=0\`, \`total_inflow=0\`, \`status='INITIATED'\`).
+     - New parent record initialized in **\`payouts\`** (\`lead_id\`, \`status='INITIATED'\`).
+     - Post-disbursal tracking record created in **\`rc_checks\`** (\`case_status='Pending Verification'\`).
+     - TAT case finalized in \`tat_cases.disbursed_at=NOW()\`.
+
+9. **Inflow Processing (Lender Funds Receipt)**:
+   - **Trigger**: Finance team receives disbursement tranche from Lender in company bank account (\`InflowProcess1\`, \`InflowProcess2\`).
+   - **Tables Created/Updated**: Line-item inserted in \`payment_in_flows\` (\`payment_id\`, \`utr_no\`, \`amount\`, \`payment_slip\`).
+   - **Verification Trigger**: Finance Head / Retail Support verifies proof slip (\`InflowVerification\`).
+   - **Ledger Recalculation**: \`payment_in_flows.status='APPROVED'\`, \`payments.total_inflow += amount\`, \`payments.balance_amount += amount\`, \`payments.inflow_status='FULLY PAID'\`.
+
+10. **Outflow Processing & Multi-Level Verification**:
+    - **Step 1: Outflow Request Raised (\`OutflowProcess1\`)**: Dealer/Seller/Third-Party beneficiary details entered (\`receiverName\`, \`bankInput\`, \`ifcsInput\`). Penny-drop verified via Signzy/Surepass API. Record created in \`payment_details\` (\`amount\`, \`payment_type\`, \`status='INITIATED'\`).
+    - **Step 2: OPS Verification (\`OutFlowOPS\`)**: OPS reviews hold components (PDD hold, Challan hold, NOC hold). Inserts records into \`payment_holds\`. Updates \`payment_details.f_verify_by\`.
+    - **Step 3: Retail Support Verification (\`OutFlowRetail\`)**: Level-1 approval (\`verify-1\`).
+    - **Step 4: State Head Approval (\`OutFlowSH\`)**: Level-2 approval (\`verify-2\`). Updates \`payment_details.s_verify_by\`.
+    - **Step 5: Banking Outflow Settlement (\`OutFlowPayment\`)**: Finance team selects debit account (e.g. AXIS Bank), mode (NEFT/RTGS), and executes payment. Records inserted into \`transactions\` and \`transaction_requests\`. Banking response webhook updates \`transactions.status='SUCCESS'\`, \`payment_details.status='FULLY PAID'\`, and \`payments.total_outflow += amount\`, \`payments.balance_amount -= amount\`.
+
+11. **Partner/FO Payout & Post-Disbursal RC Clearance**:
+    - **Payout Computation**: System executes \`PayoutController.update_calculation\`. Calculates base commission minus IRR/Tenure caveats and PDD cuts in \`payout_details\`. Generates payouts via \`transaction_payouts\`.
+    - **PDD & RC Transfer**: Ops tracks RTO transfer in \`rc_checks\`. As RTO issues new registration certificate with Finj/Lender hypothecation, document uploaded to \`documents\`, and \`rc_checks.case_status='Approved'\`. Outstanding holds in \`payment_holds\` released.
+
+---
+
+## 4. Stage / Status-Wise Database Updates
+
+| Stage / Action | Source Table | Tables Read | Tables Inserted | Tables Updated | Important Columns Updated | Trigger / Route / API |
+| :--- | :--- | :--- | :--- | :--- | :--- | :--- |
+| **1. Create Lead (Step A-D)** | N/A (Input Form) | \`users\`, \`states\`, \`districts\`, \`tehsils\`, \`brands\`, \`models\` | \`leads\`, \`lead_follow_ups\`, \`documents\`, \`lead_history\` | N/A | \`leads.status\` = 'OPEN', \`loan_amount\`, \`mobile\`, \`reg_no\`, \`source\`, \`vehicle_type\` | \`Lead.create\` / \`POST /lead/create\` |
+| **2. Field Investigation (FI)** | \`leads\` | \`leads\`, \`users\` | \`loan_profile\`, \`lead_history\`, \`documents\` | \`leads\`, \`lead_follow_ups\` | \`lead_follow_ups.status\` = 'FI', \`loan_profile.cibil_score\`, \`cibil_pdf\` | \`Lead.updateStatus\` / \`POST /lead/update-status\` |
+| **3. Parivahan & RC Check** | Parivahan API | \`leads\` | \`vahaan_details\`, \`rc_limit\` | \`leads\` | \`vahaan_details.owner_name\`, \`financer\`, \`rc_limit.fo_noc_status\`, \`vahan_status\` | \`SC.index\` / Parivahan Webhook |
+| **4. Lender Login** | \`lead_follow_ups\` | \`leads\`, \`lenders\` | \`lead_history\` | \`leads\`, \`lead_follow_ups\` | \`lead_follow_ups.status\` = 'LOGIN', \`lender_id\`, \`application_id\`, \`lender_spoc_name\` | \`Lead.updateStatus\` / \`POST /lead/update-status\` |
+| **5. OPS Verification** | \`rc_limit\` | \`documents\`, \`rc_limit\`, \`vahaan_details\` | \`payment_holds\`, \`lead_history\`, \`ops_field_audits\` | \`lead_follow_ups\`, \`rc_limit\` | \`lead_follow_ups.status\` = 'OPS CHECK PENDING' → 'APPROVED', \`rc_limit.decision\` | \`Lead.opsVerify\` / \`POST /lead/ops-verify\` |
+| **6. Sanction Approval** | Lender Portal | \`lead_follow_ups\` | \`lead_history\`, \`tat_case_stages\` | \`lead_follow_ups\`, \`loan_profile\` | \`lead_follow_ups.status\` = 'APPROVED', \`loan_amount\`, \`loan_profile.tenure\`, \`interest_rate\` | \`Lead.updateStatus\` / \`POST /lead/update-status\` |
+| **7. Verification Pending (VP)** | \`lead_follow_ups\` | \`lead_follow_ups\` | \`documents\`, \`lead_history\` | \`lead_follow_ups\` | \`status\` = 'VERIFICATION PENDING', \`disbursal_receipt\`, \`amount_credited_to\`, \`disbursment_receipt\` = 'Yes' | \`Lead.updateStatus\` / \`POST /lead/update-status\` |
+| **8. Loan Disbursal** | \`lead_follow_ups\` | \`leads\`, \`lead_follow_ups\` | \`payments\`, \`payouts\`, \`rc_checks\`, \`tat_cases\`, \`lead_history\` | \`leads\`, \`lead_follow_ups\` | \`leads.status\` = 'DISBURSED', \`payments.status\` = 'INITIATED', \`payouts.status\` = 'INITIATED', \`tat_cases.disbursed_at\` = NOW() | \`Lead.updateStatus\` / \`POST /lead/update-status\` |
+| **9. Inflow Entry (Funds In)** | Bank Alert | \`payments\` | \`payment_in_flows\` | \`payments\` | \`payment_in_flows.utr_no\`, \`amount\`, \`payment_slip\`, \`payments.pending_inflow\` | \`Payment.addInFlow\` / \`POST /payments/in-flow\` |
+| **10. Inflow Verification** | \`payment_in_flows\`| \`payments\`, \`payment_in_flows\` | \`payment_history\`, \`tat_case_stages\` | \`payments\`, \`payment_in_flows\` | \`payment_in_flows.status\` = 'APPROVED', \`payments.total_inflow\` += amount, \`payments.balance_amount\` += amount, \`inflow_status\` = 'FULLY PAID' | \`Payment.inFlowVerify\` / \`POST /payments/in-flow-verify\` |
+| **11. Outflow Raised** | \`payments\` | \`payments\`, \`dealers\`, \`borrowers\` | \`payment_details\`, \`payment_holds\` | \`payments\` | \`payment_details.amount\`, \`payment_type\`, \`payment_bank_id\`, \`payments.pending_outflow\` | \`Payment.addOutFlow\` / \`POST /payments/out-flow\` |
+| **12. Outflow OPS Check** | \`payment_details\` | \`payment_details\`, \`payment_holds\` | \`tat_case_stages\` | \`payment_details\`, \`payments\` | \`payments.ops_verification\` = 1, \`ops_verified_by\` = Auth::id(), \`payment_details.status\` = 'IN PROGRESS' | \`Payment.outFlowOpsVerify\` / \`POST /payments/ops-verify\` |
+| **13. Outflow Verify 1 (Retail)** | \`payment_details\` | \`payment_details\` | \`tat_case_stages\` | \`payment_details\` | \`payment_details.f_verify_by\` = Auth::id() | \`Payment.outFlowVerify1\` / \`POST /payments/out-flow-verify-1\` |
+| **14. Outflow Verify 2 (State Head)** | \`payment_details\` | \`payment_details\` | \`tat_case_stages\` | \`payment_details\` | \`payment_details.s_verify_by\` = Auth::id() | \`Payment.outFlowVerify2\` / \`POST /payments/out-flow-verify-2\` |
+| **15. Outflow Payment Execution** | \`payment_details\` | \`payment_details\`, \`payment_banks\` | \`transactions\`, \`transaction_requests\` | \`payment_details\`, \`payments\` | \`transactions.utr\`, \`transactions.status\` = 'PENDING', \`payment_details.transaction_status\` = 'In Process' | \`Payment.outFlowConfirm\` / \`POST /payments/out-flow-confirm\` |
+| **16. Bank Webhook Callback** | Gateway Callback | \`transactions\` | \`transaction_history\` | \`transactions\`, \`payment_details\`, \`payments\`, \`tat_cases\` | \`transactions.status\` = 'SUCCESS', \`payment_details.status\` = 'FULLY PAID', \`payments.balance_amount\` -= amount, \`payments.total_outflow\` += amount | \`Transaction.webhook\` / \`POST /transactions/callback\` |
+| **17. Payout Calculation & Release** | \`payouts\` | \`payouts\`, \`payout_configuration_masters\` | \`payout_details\`, \`payout_amount_histories\`, \`transaction_payouts\` | \`payouts\` | \`payout_details.monthly_amount\`, \`caveat_payout_calc_amount\`, \`payouts.status\` = 'MONTHLY PAID' | \`Payout.updateCalculation\` / \`POST /payouts/update_calculation\` |
+| **18. Post-Disbursal RC Transfer** | RTO / Post-Sale | \`rc_checks\`, \`vahaan_details\` | \`rc_comments\`, \`pdd_pendencies\` | \`rc_checks\`, \`payment_holds\` | \`rc_checks.case_status\` = 'Approved', \`rc_checks.doc_status\` = 'Complete', \`payment_holds.is_active\` = 0 | \`PostSale.updateStatus\` / \`POST /after-disbursal/update\` |
+
+---
+
+## 5. API → Database Mapping
+
+| API Endpoint | Controller & Method | HTTP | Tables Read | Tables Inserted | Tables Updated | Important Fields Affected | State / Status Change |
+| :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
+| \`/lead/create\` | \`LeadController@create\` / \`store\` | \`POST\` | \`users\`, \`tehsils\`, \`brands\` | \`leads\`, \`lead_follow_ups\`, \`documents\`, \`lead_history\` | N/A | \`leads.name\`, \`mobile\`, \`loan_amount\`, \`reg_no\`, \`agent_id\` | Initialized to \`OPEN\` |
+| \`/lead/update-status\` | \`LeadController@updateStatus\` | \`POST\` | \`leads\`, \`lead_follow_ups\`, \`roles\` | \`lead_history\`, \`tat_case_stages\` | \`leads\`, \`lead_follow_ups\`, \`loan_profile\` | \`lead_follow_ups.status\`, \`lender_id\`, \`application_id\`, \`disbursal_receipt\` | \`OPEN\` → \`FI\` → \`LOGIN\` → \`APPROVED\` → \`VP\` → \`DISBURSED\` |
+| \`/lead/ops-verify\` | \`LeadController@opsVerify\` | \`POST\` | \`rc_limit\`, \`documents\` | \`payment_holds\`, \`ops_field_audits\` | \`rc_limit\`, \`lead_follow_ups\` | \`rc_limit.decision\`, \`case_flagged\`, \`ops_noc_status\`, \`challan_cost\` | \`OPS CHECK PENDING\` → \`OPS CHECK PASSED\` / \`FAILED\` |
+| \`/payments/in-flow\` | \`PaymentController@addInFlow\` | \`POST\` | \`payments\` | \`payment_in_flows\`, \`payment_history\` | \`payments\` | \`payment_in_flows.utr_no\`, \`amount\`, \`payment_slip\`, \`pending_inflow\` | \`payments.inflow_status\` = \`IN PROGRESS\` |
+| \`/payments/in-flow-verify\` | \`PaymentController@inFlowVerify\` | \`POST\` | \`payments\`, \`payment_in_flows\` | \`tat_case_stages\` | \`payment_in_flows\`, \`payments\` | \`payment_in_flows.status\`, \`payments.total_inflow\`, \`balance_amount\` | \`payment_in_flows.status\` = \`APPROVED\`, \`inflow_status\` = \`FULLY PAID\` |
+| \`/payments/out-flow\` | \`PaymentController@addOutFlow\` | \`POST\` | \`payments\`, \`dealers\`, \`borrowers\` | \`payment_details\`, \`payment_holds\` | \`payments\` | \`payment_details.amount\`, \`payment_type\`, \`payment_bank_id\` | \`payments.outflow_status\` = \`IN PROGRESS\` |
+| \`/payments/ops-verify\` | \`PaymentController@outFlowOpsVerify\`| \`POST\` | \`payment_details\`, \`payment_holds\` | \`tat_case_stages\` | \`payment_details\`, \`payments\` | \`payments.ops_verification\` = 1, \`ops_verified_by\` = User ID | OPS Verified |
+| \`/payments/out-flow-verify-1\`| \`PaymentController@outFlowVerify1\` | \`POST\` | \`payment_details\` | \`tat_case_stages\` | \`payment_details\` | \`payment_details.f_verify_by\` = User ID | Level 1 (Retail) Verified |
+| \`/payments/out-flow-verify-2\`| \`PaymentController@outFlowVerify2\` | \`POST\` | \`payment_details\` | \`tat_case_stages\` | \`payment_details\` | \`payment_details.s_verify_by\` = User ID | Level 2 (State Head) Verified |
+| \`/payments/out-flow-confirm\` | \`PaymentController@outFlowConfirm\` | \`POST\` | \`payment_details\`, \`payment_banks\` | \`transactions\`, \`transaction_requests\` | \`payment_details\`, \`payments\` | \`transactions.process_id\`, \`from_account\`, \`amount\`, \`provider\` | Dispatched to Banking Engine |
+| \`/transactions/callback\` | \`TransactionController@webhook\` | \`POST\` | \`transactions\` | \`transaction_history\` | \`transactions\`, \`payment_details\`, \`payments\` | \`transactions.status\`, \`utr\`, \`payments.balance_amount\`, \`total_outflow\` | \`transactions.status\` = \`SUCCESS\`, \`payment_details.status\` = \`FULLY PAID\` |
+| \`/payouts/update_calculation\`| \`PayoutController@updateCalculation\`| \`POST\` | \`payouts\`, \`payout_configuration_masters\` | \`payout_details\`, \`payout_amount_histories\` | \`payouts\` | \`payout_details.monthly_amount\`, \`caveat_payout_calc_amount\` | \`payouts.status\` = \`MONTHLY INITIATED\` / \`PAID\` |
+| \`/lead/cancellation\` | \`LeadController@cancelLead\` | \`POST\` | \`leads\`, \`lead_follow_ups\` | \`lead_cancellation_details\`, \`lead_history\` | \`leads\`, \`lead_follow_ups\` | \`leads.status\` = \`CUSTOMER CANCELLATION\`, \`refund_amount\`, \`utr\` | Case Cancelled |
+
+---
+
+## 6. Data Lifecycle
+
+\`\`\`
+[1. DRAFT / OPEN] ──> [2. FI] ──> [3. RC LIMIT] ──> [4. LOGIN] ──> [5. OPS CHECK] ──> [6. APPROVED] 
+                                                                                              │
+[11. CLOSED / RTO CLEAR] <── [10. PAYOUT & PDD] <── [9. OUTFLOW] <── [8. INFLOW] <── [7. DISBURSED]
+\`\`\`
+
+1. **Creation & Open Stage (\`DRAFT\` / \`OPEN\`)**: Sourced by FO or Partner. Initial customer, contact, and vehicle details captured. Records exist in \`leads\` and \`lead_follow_ups\`.
+2. **Field Investigation (\`FI\`)**: Customer physical verification. Identity documents (Aadhaar, PAN) uploaded to \`documents\`. Parivahan RC data pulled into \`vahaan_details\`. Credit report generated into \`loan_profile\`.
+3. **Pre-Sanction Technical Inspection (\`RC LIMIT\`)**: RC authenticity, fitness, engine/chassis stamping, and challan status verified. Stored in \`rc_limit\`.
+4. **Lender Login (\`LOGIN\`)**: Formal loan file submitted to bank/NBFC partner. Lender SPOC, application reference number, and branch recorded in \`lead_follow_ups\`.
+5. **Operations Clearance (\`OPS CHECK PENDING\` → \`OPS CHECK PASSED\`)**: Central operations audits all documentation, loan-to-value (LTV), and policy mitigants. Holds configured in \`payment_holds\`.
+6. **Sanction Approval (\`APPROVED\`)**: Lender issues sanction. Terms (tenure, interest rate, EMI frequency) locked in \`loan_profile\`.
+7. **Pre-Disbursal Documentation (\`VERIFICATION PENDING\`)**: Disbursal receipt, undertaking, and dealer payment declarations submitted.
+8. **Disbursal (\`DISBURSED\`)**: Milestone event triggering parallel operations: financial ledger (\`payments\`), commission ledger (\`payouts\`), and post-sale tracking (\`rc_checks\`).
+9. **Inflow Settlement (\`INFLOW\`)**: Lender deposits sanctioned amount into Finj clearing account. Validated with bank UTR and credited to \`payments.total_inflow\`.
+10. **Outflow Settlement (\`OUTFLOW\`)**: Payment orders routed through three approval tiers: OPS Check → Retail Head → State Head. Executed via banking API to dealer/seller.
+11. **Post-Sale, RC Transfer & Closure (\`CLOSED\`)**: RTO endorsement (hypothecation addition) tracked in \`rc_checks\`. PDD documents retrieved and submitted to lender. Residual payment holds released. Payouts disbursed to agent and partner.
+
+---
+
+## 7. Status Transition Mapping
+
+| Previous Status | New Status | Storing Table | Column Name | Cascaded Tables Updated | Business Logic & Pre-Conditions |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| \`NULL\` / \`DRAFT\` | \`OPEN\` | \`leads\` / \`lead_follow_ups\` | \`status\` | \`lead_history\` | Mandatory fields present: Customer Name, Mobile Number, State, District, Tehsil, Sourcing Channel. |
+| \`OPEN\` | \`FI\` | \`leads\` / \`lead_follow_ups\` | \`status\` | \`loan_profile\`, \`lead_history\`, \`vahaan_details\` | Assigned FO visits location; initiates CIBIL pull and uploads applicant ID proofs. |
+| \`FI\` | \`RC LIMIT PENDING\` | \`leads\` / \`lead_follow_ups\` | \`status\` | \`rc_limit\`, \`lead_history\` | Vehicle requires physical inspection or hypothecation clearance verification. |
+| \`RC LIMIT PENDING\` | \`LOGIN\` | \`leads\` / \`lead_follow_ups\` | \`status\` | \`rc_limit\`, \`lead_history\` | OPS inspector sets \`rc_limit.decision\` = 'APPROVED' and flags case GREEN or YELLOW. |
+| \`FI\` / \`RC LIMIT VERIFIED\` | \`LOGIN\` | \`leads\` / \`lead_follow_ups\` | \`status\` | \`lead_history\` | Partner lender selected, application reference number and SPOC mobile captured. |
+| \`LOGIN\` | \`OPS CHECK PENDING\` | \`leads\` / \`lead_follow_ups\` | \`status\` | \`tat_case_stages\`, \`lead_history\` | Loan file forwarded to central Ops for sanction audit. |
+| \`OPS CHECK PENDING\` | \`OPS CHECK PASSED\` | \`lead_follow_ups\` | \`status\` | \`rc_limit\`, \`ops_field_audits\` | Ops confirms vehicle details match Parivahan, KYC verified, no disqualifying challans. |
+| \`OPS CHECK PENDING\` | \`OPS CHECK FAILED\` | \`lead_follow_ups\` | \`status\` | \`lead_history\` | Critical mismatch in KYC or RC; case returns to \`LOGIN\` for remediation. |
+| \`OPS CHECK PASSED\` | \`APPROVED\` | \`leads\` / \`lead_follow_ups\` | \`status\` | \`loan_profile\`, \`tat_case_stages\` | Lender sanction letter issued; sanctioned loan amount, tenure, and interest rate entered. |
+| \`APPROVED\` | \`VERIFICATION PENDING\` | \`leads\` / \`lead_follow_ups\` | \`status\` | \`documents\`, \`lead_history\` | Disbursal receipt and signed undertaking uploaded; credit beneficiary specified. |
+| \`VERIFICATION PENDING\` | \`DISBURSED\` | \`leads\` / \`lead_follow_ups\` | \`status\` | \`payments\`, \`payouts\`, \`rc_checks\`, \`tat_cases\` | Lender releases funds. Triggers initialization of \`payments\` (status='INITIATED') and \`payouts\`. |
+| Any Pre-Disbursal | \`CUSTOMER CANCELLATION\`| \`leads\` / \`lead_follow_ups\` | \`status\` | \`lead_cancellation_details\`, \`lead_history\` | Applicant or lender withdraws; cancellation reason, refund UTR, and document recorded. |
+| Any Pre-Disbursal | \`REJECTED\` | \`leads\` / \`lead_follow_ups\` | \`status\` | \`lead_history\`, \`tat_cases\` | Lender credit rejection or vehicle blacklisted in Parivahan registry. |
+| \`INITIATED\` (Payment) | \`IN PROGRESS\` | \`payments\` | \`inflow_status\` / \`outflow_status\` | \`payment_in_flows\` / \`payment_details\` | Inflow tranche or Outflow request initiated. |
+| \`IN PROGRESS\` | \`FULLY PAID\` | \`payments\` | \`inflow_status\` / \`outflow_status\` | \`transactions\`, \`payment_details\` | Banking engine completes NEFT/RTGS transaction with confirmed UTR. |
+| \`Pending Verification\` | \`Approved\` | \`rc_checks\` | \`case_status\` | \`payment_holds\`, \`post_sale_dashboard\` | RTO transfer completed; new RC reflecting lender hypothecation verified by Ops. |
+
+---
+
+## 8. Read vs Write Analysis
+
+\`\`\`
+ MASTER / REFERENCE (Read-Heavy)
+ ├── brands, models, vehicle_types, states, districts, tehsils
+ ├── statuses, payment_statuses, rc_statuses, lenders, menus, permissions
+ └── *Cached in application memory / Redis; rare writes via Admin panel*
+
+ TRANSACTIONAL (Write-Heavy / Core Business)
+ ├── leads, lead_follow_ups, loan_profile
+ ├── payments, payment_details, payment_in_flows, payment_holds
+ ├── payouts, payout_details, transactions, transaction_requests, transaction_integrations
+ └── *Frequent INSERT and UPDATE operations on every user action*
+
+ PIVOT / MAPPING
+ ├── model_has_roles, role_has_permissions, lead_mitigants, lead_rto_works
+ ├── daily_target_leads, payout_configuration_lender_vehicles
+ └── *Maintains relational integrity between core entities*
+
+ AUDIT & TELEMETRY (Append-Only / High-Volume)
+ ├── lead_history (341K+ rows), payout_amount_histories (211K+ rows), activity_log (30K+ rows)
+ ├── tat_cases, tat_case_stages, post_sale_dashboard (15M+ analytical rows)
+ └── *Strictly INSERT operations; never modified or deleted*
+\`\`\`
+
+### Categorization Table:
+| Category | Tables | Read/Write Pattern | Retention & Concurrency Considerations |
+| :--- | :--- | :--- | :--- |
+| **Master / Reference Tables** | \`brands\`, \`models\`, \`vehicle_types\`, \`states\`, \`districts\`, \`tehsils\`, \`statuses\`, \`payment_statuses\`, \`payout_statuses\`, \`rc_statuses\`, \`lenders\`, \`permissions\`, \`roles\`, \`menus\`, \`master_document_type\` | **Read-Only** (99.9% reads). Updates restricted to Super Admin panel. | Heavily cached via application cache. No locking issues. |
+| **Primary Transaction Tables** | \`leads\`, \`lead_follow_ups\`, \`loan_profile\`, \`payments\`, \`payment_details\`, \`payment_in_flows\`, \`payment_holds\`, \`payouts\`, \`payout_details\`, \`transactions\`, \`transaction_requests\`, \`rc_limit\`, \`rc_checks\` | **Read-Write** (50% reads, 50% writes). Frequent updates as leads move through stages. | High concurrency. Employs composite indexes (e.g. \`payments(lead_id, status)\`). |
+| **Mapping / Pivot Tables** | \`model_has_roles\`, \`role_has_permissions\`, \`lead_mitigants\`, \`lead_rto_works\`, \`daily_target_leads\`, \`payout_configuration_lender_vehicles\`, \`pre_onboard_partners_products\` | **Read-Write** (Inserts upon linking, updates on role/config changes). | Managed through Eloquent \`belongsToMany\` sync methods. |
+| **Audit & History Tables** | \`lead_history\`, \`payout_amount_histories\`, \`action_histories\`, \`activity_log\`, \`audit_logs\`, \`case_status_mail_logs\`, \`document_activity_logs\`, \`tat_case_stages\` | **Append-Only** (100% inserts, reads only during audit reviews). | Fast growth tables (\`lead_history\` has 341K rows). Should be partitioned or archived periodically. |
+| **High-Volume Telemetry / Snapshots** | \`post_sale_dashboard\`, \`transaction_integration_responses\`, \`user_tracking\`, \`user_activity\`, \`user_logins\` | **Bulk Inserts & Analytical Reads**. | \`post_sale_dashboard\` contains 15M+ rows from automated daily reporting crons. |
+
+---
+
+## 9. Cross-Module Dependencies
+
+\`\`\`
+[LEAD MANAGEMENT] ──(Disbursal Event)──> [FINANCIAL PAYMENTS] ──(Deductions)──> [PAYOUTS & COMMISSIONS]
+       │                                          │                                       │
+  (Vehicle Reg)                             (Hold Retainage)                         (PDD Cut Penalty)
+       │                                          │                                       │
+       ▼                                          ▼                                       ▼
+ [VAHAN & RTO CHECKS] <─────────────── [RC LIMIT & HOLDS] <─────────────────── [POST-SALE PDD RETRIEVAL]
+\`\`\`
+
+1. **Lead Disbursal → Financial Ledger Initialization**:
+   - Marking a lead \`DISBURSED\` in \`lead_follow_ups\` acts as an event trigger.
+   - The application automatically instantiates records in \`payments\` (setting \`balance_amount=0\`), \`payouts\` (setting \`status='INITIATED'\`), and \`rc_checks\` (setting \`case_status='Pending Verification'\`).
+   - If any of these dependent insertions fail, the state becomes inconsistent (disbursed without a payment record).
+
+2. **Hold Retainage → Outflow Deductions**:
+   - Decisions made during Ops Check in \`rc_limit\` (e.g. NOC hold, Challan hold, PDD hold) populate \`payment_holds\`.
+   - When Finance executes an outflow to a dealer in \`payment_details\`, the system reads active \`payment_holds\` for that \`payment_id\` and reduces the net payable amount (\`net_disbursed = gross_amount - sum(active_holds)\`).
+
+3. **Payment Completion → Core Banking Integration**:
+   - Confirming an outflow in \`PaymentController@outFlowConfirm\` inserts a record into \`transactions\` with a SHA-256 \`duplicate_key\` (hash of \`lead_id\`, \`to_account\`, \`amount\`, \`attempt\`).
+   - \`transactions\` communicates with banking gateways (Axis/Razorpay). The webhook callback updates \`transactions.status='SUCCESS'\`, which immediately recalculates \`payments.balance_amount\` and \`payments.total_outflow\`.
+
+4. **PDD Compliance → Payout Release**:
+   - Payout calculations in \`payout_details\` query \`pdd_pendencies\` and \`documents\`.
+   - If post-disbursement documents (Invoice, Insurance, RC copy) are missing beyond SLA, \`payout_details.pdd_cut_percentage\` is applied, penalizing the agent/partner commission until documents are uploaded.
+
+---
+
+## 10. Entity-Relationship (ER) & Data-Flow Diagram
+
+\`\`\`mermaid
+erDiagram
+    USERS ||--o{ LEADS : originates
+    USERS ||--o{ LEAD_FOLLOW_UPS : updates
+    USERS ||--o{ LEAD_HISTORY : logs
+    USERS ||--o{ PAYMENTS : manages
+    ROLES ||--o{ MODEL_HAS_ROLES : assigned_to
+    USERS ||--o{ MODEL_HAS_ROLES : has
+
+    LEADS ||--o{ LEAD_FOLLOW_UPS : tracks_stages
+    LEADS ||--|| LOAN_PROFILE : underwriting
+    LEADS ||--o{ DOCUMENTS : KYC_and_proofs
+    LEADS ||--o{ LEAD_HISTORY : status_audit
+    LEADS ||--|| RC_LIMIT : ops_checks
+    LEADS ||--|| RC_CHECKS : post_sale_rto
+    LEADS ||--|| PAYMENTS : financial_ledger
+    LEADS ||--|| PAYOUTS : agent_commission
+    LEADS ||--|| TAT_CASES : SLA_tracking
+    LEADS ||--o{ LEAD_AGREEMENTS : digital_undertaking
+
+    PAYMENTS ||--o{ PAYMENT_IN_FLOWS : lender_credits
+    PAYMENTS ||--o{ PAYMENT_DETAILS : dealer_outflows
+    PAYMENTS ||--o{ PAYMENT_HOLDS : deductions
+
+    PAYMENT_DETAILS ||--o{ TRANSACTIONS : executes_banking
+    TRANSACTIONS ||--o{ TRANSACTION_REQUESTS : gateway_payloads
+
+    PAYOUTS ||--|| PAYOUT_DETAILS : calculations
+    PAYOUTS ||--o{ PAYOUT_AMOUNT_HISTORIES : overrides
+
+    LEAD_AGREEMENTS ||--o{ LEAD_AGREEMENT_SIGNINGS : party_signatures
+    LEAD_AGREEMENTS ||--o{ LEAD_AGREEMENT_LOGS : audit_trail
+
+    TAT_CASES ||--o{ TAT_CASE_STAGES : stage_timers
+
+    LEADS {
+        int id PK
+        varchar status
+        int loan_amount
+        varchar reg_no
+        varchar vehicle_type
+        bigint mobile
+    }
+    LEAD_FOLLOW_UPS {
+        int id PK
+        int lead_id FK
+        varchar status
+        int lender_id FK
+        varchar application_id
+        text disbursal_receipt
+    }
+    PAYMENTS {
+        int id PK
+        int lead_id FK
+        int balance_amount
+        int total_inflow
+        int total_outflow
+        varchar status
+    }
+    PAYMENT_DETAILS {
+        int id PK
+        int payment_id FK
+        int amount
+        varchar status
+        int f_verify_by FK
+        int s_verify_by FK
+    }
+    PAYMENT_IN_FLOWS {
+        int id PK
+        int payment_id FK
+        varchar utr_no
+        int amount
+        varchar status
+    }
+    TRANSACTIONS {
+        bigint id PK
+        varchar process_id
+        bigint lead_id FK
+        varchar utr
+        decimal amount
+        varchar status
+    }
+\`\`\`
+
+---
+
+## 11. Important Architectural Findings
+
+1. **Denormalized Customer Data (Dual Model Evolution)**:
+   - Older records store borrower details directly on \`leads\` (\`leads.name\`, \`leads.mobile\`, \`leads.pan_number\`, \`leads.aadhaar_number\`).
+   - Recent migrations (Batch 178) introduced normalized entities: \`borrower_details\`, \`borrower_bank_details\`, \`borrower_kyc_details\` with UUID primary keys.
+   - *Impact*: Both models co-exist. Automated testing and API queries must account for both legacy columns on \`leads\` and normalized entries in \`borrower_details\`.
+
+2. **Application-Enforced Referential Integrity**:
+   - The database contains only ~25 foreign keys in \`information_schema.KEY_COLUMN_USAGE\`. Relationships like \`lead_follow_ups.lead_id → leads.id\` or \`payment_details.payment_id → payments.id\` are maintained strictly by Laravel Eloquent models.
+   - *Risk*: Direct SQL manipulations or failed database transactions can leave orphan child records in \`lead_follow_ups\`, \`documents\`, or \`payment_details\`.
+
+3. **Transaction Deduplication Mechanism**:
+   - The \`transactions\` table contains \`duplicate_key (char(32))\` and \`is_duplicate (tinyint)\`.
+   - *Design*: The application computes an MD5/SHA hash of \`lead_id + to_account + amount + attempt\` before firing any payout via Axis/Razorpay to prevent double-disbursement during network timeouts or rapid user clicks.
+
+4. **Multi-Tiered Outflow Verification Architecture**:
+   - Dealer/seller disbursements cannot be executed in a single step. The database enforces sequential verification timestamps:
+     - \`payment_details.ops_verified_by\` (OPS Check)
+     - \`payment_details.f_verify_by\` (Retail Support Head)
+     - \`payment_details.s_verify_by\` (State Head)
+     - \`payment_details.finance_confirm\` (Finance Execution)
+
+5. **Analytical Table Footprint**:
+   - \`post_sale_dashboard\` contains **over 15 million rows**, populated by automated nightly batch cron jobs tracking post-disbursal case status day-by-day.
+   - \`lead_history\` contains **341,000+ rows**, storing an audit line for every single status change, TAT calculation, and user note.
+
+6. **Deprecated / Inactive Tables Identified**:
+   - \`user_tehsil\` (0 rows; replaced by \`user_tehsils\` with 41 rows).
+   - \`alembic_version\` (0 rows; Python Alembic remnant; active migrations reside entirely in Laravel \`migrations\` table with 421 batches).
+   - \`lender_emails_legacy_backup\` (63 rows; superseded by \`lender_emails\`).
+   - \`request_logs\` (0 rows; superseded by \`api_logs\` with 24K+ rows and \`activity_log\` with 30K+ rows).
+
+---
+
+## 12. Developer & QA Quick Reference Guide ("Action X → Effect")
+
+* **When a user creates a lead (\`POST /lead/create\`)**:
+  - \`leads\` inserted (\`status='OPEN'\`).
+  - \`lead_follow_ups\` inserted (\`status='OPEN'\`).
+  - \`documents\` inserted (PAN / RC photos).
+  - \`lead_history\` inserted (\`old_status=NULL\`, \`new_status='OPEN'\`).
+
+* **When Ops approves a case (\`POST /lead/ops-verify\`)**:
+  - \`rc_limit\` updated (\`decision='APPROVED'\`, \`case_flagged='GREEN'\`).
+  - \`payment_holds\` inserted if NOC/Challan/PDD hold amounts are applied.
+  - \`lead_follow_ups\` updated (\`status='OPS CHECK PASSED'\`).
+
+* **When a loan is disbursed (\`POST /lead/update-status\` with \`status='DISBURSED'\`)**:
+  - \`leads\` and \`lead_follow_ups\` updated (\`status='DISBURSED'\`).
+  - \`payments\` inserted (\`balance_amount=0\`, \`total_inflow=0\`, \`total_outflow=0\`, \`status='INITIATED'\`).
+  - \`payouts\` inserted (\`status='INITIATED'\`).
+  - \`rc_checks\` inserted (\`case_status='Pending Verification'\`).
+  - \`tat_cases\` updated (\`disbursed_at=NOW()\`).
+
+* **When Lender funds arrive (\`POST /payments/in-flow-verify\`)**:
+  - \`payment_in_flows\` updated (\`status='APPROVED'\`).
+  - \`payments\` updated (\`total_inflow += amount\`, \`balance_amount += amount\`, \`inflow_status='FULLY PAID'\`).
+
+* **When Outflow is confirmed to Dealer (\`POST /payments/out-flow-confirm\`)**:
+  - \`payment_details\` updated (\`transaction_status='In Process'\`).
+  - \`transactions\` inserted (\`status='PENDING'\`, \`provider='AXIS'\`).
+  - Webhook callback updates \`transactions.status='SUCCESS'\`, \`payments.total_outflow += amount\`, and \`payments.balance_amount -= amount\`.
+`;
+
+  // Custom renderer to wrap tables
+  const renderer = new marked.Renderer();
+  renderer.table = (header, body) =>
+    '<div class="table-wrap"><table><thead>' + header + '</thead><tbody>' + body + '</tbody></table></div>';
+
+  // Add section IDs to h2 headings
+  let sectionCounter = 0;
+  renderer.heading = (text, level) => {
+    const tag = 'h' + level;
+    if (level === 2) {
+      sectionCounter++;
+      return '<' + tag + ' id="section-' + sectionCounter + '">' + text + '</' + tag + '>';
+    }
+    return '<' + tag + '>' + text + '</' + tag + '>';
+  };
+
+  document.getElementById('content').innerHTML = marked.parse(md, { renderer });
+
+  // Run mermaid on code blocks
+  mermaid.run({ nodes: document.querySelectorAll('.language-mermaid') }).catch(() => {});
+</script>
+</body>
+</html>
