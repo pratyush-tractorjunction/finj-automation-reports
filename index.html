@@ -1,0 +1,329 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FinJ Automation Reports Hub</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-primary: #0a0e17;
+            --bg-card: rgba(19, 27, 44, 0.7);
+            --border-card: rgba(255, 255, 255, 0.08);
+            --accent-primary: #3b82f6;
+            --accent-glow: rgba(59, 130, 246, 0.35);
+            --accent-secondary: #10b981;
+            --accent-purple: #8b5cf6;
+            --text-primary: #f8fafc;
+            --text-secondary: #94a3b8;
+            --text-muted: #64748b;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background-color: var(--bg-primary);
+            background-image: 
+                radial-gradient(at 0% 0%, rgba(59, 130, 246, 0.15) 0px, transparent 50%),
+                radial-gradient(at 100% 100%, rgba(139, 92, 246, 0.15) 0px, transparent 50%);
+            color: var(--text-primary);
+            min-height: 100vh;
+            padding: 40px 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .container {
+            max-width: 1100px;
+            width: 100%;
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 48px;
+        }
+
+        .badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            background: rgba(59, 130, 246, 0.15);
+            color: #60a5fa;
+            border: 1px solid rgba(59, 130, 246, 0.3);
+            border-radius: 9999px;
+            padding: 6px 14px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            letter-spacing: 0.5px;
+            text-transform: uppercase;
+            margin-bottom: 16px;
+        }
+
+        .badge-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #3b82f6;
+            box-shadow: 0 0 10px #3b82f6;
+        }
+
+        h1 {
+            font-size: 2.5rem;
+            font-weight: 700;
+            letter-spacing: -0.03em;
+            margin-bottom: 12px;
+            background: linear-gradient(135deg, #ffffff 30%, #93c5fd 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        p.subtitle {
+            color: var(--text-secondary);
+            font-size: 1.05rem;
+            max-width: 600px;
+            margin: 0 auto;
+        }
+
+        .section-title {
+            font-size: 1.3rem;
+            font-weight: 600;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            color: #e2e8f0;
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+            gap: 24px;
+            margin-bottom: 48px;
+        }
+
+        .card {
+            background: var(--bg-card);
+            border: 1px solid var(--border-card);
+            backdrop-filter: blur(12px);
+            border-radius: 16px;
+            padding: 28px;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+        }
+
+        .card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 3px;
+            background: linear-gradient(90deg, #3b82f6, #8b5cf6);
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        .card:hover {
+            transform: translateY(-4px);
+            border-color: rgba(59, 130, 246, 0.4);
+            box-shadow: 0 12px 30px rgba(0, 0, 0, 0.4), 0 0 20px var(--accent-glow);
+        }
+
+        .card:hover::before {
+            opacity: 1;
+        }
+
+        .card-header {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            margin-bottom: 16px;
+        }
+
+        .card-tag {
+            font-size: 0.75rem;
+            padding: 4px 10px;
+            border-radius: 6px;
+            font-weight: 600;
+            letter-spacing: 0.5px;
+            text-transform: uppercase;
+        }
+
+        .tag-jmeter {
+            background: rgba(239, 68, 68, 0.15);
+            color: #f87171;
+            border: 1px solid rgba(239, 68, 68, 0.3);
+        }
+
+        .tag-analysis {
+            background: rgba(16, 185, 129, 0.15);
+            color: #34d399;
+            border: 1px solid rgba(16, 185, 129, 0.3);
+        }
+
+        .tag-allure {
+            background: rgba(245, 158, 11, 0.15);
+            color: #fbbf24;
+            border: 1px solid rgba(245, 158, 11, 0.3);
+        }
+
+        .card-title {
+            font-size: 1.25rem;
+            font-weight: 600;
+            margin-bottom: 8px;
+            color: #ffffff;
+        }
+
+        .card-desc {
+            color: var(--text-secondary);
+            font-size: 0.92rem;
+            line-height: 1.5;
+            margin-bottom: 24px;
+        }
+
+        .btn-link {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            background: linear-gradient(135deg, #2563eb, #1d4ed8);
+            color: white;
+            text-decoration: none;
+            padding: 12px 20px;
+            border-radius: 10px;
+            font-size: 0.95rem;
+            font-weight: 600;
+            transition: all 0.2s ease;
+            box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3);
+        }
+
+        .btn-link:hover {
+            background: linear-gradient(135deg, #3b82f6, #2563eb);
+            box-shadow: 0 6px 18px rgba(37, 99, 235, 0.5);
+            transform: scale(1.02);
+        }
+
+        .btn-secondary {
+            background: rgba(255, 255, 255, 0.06);
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            box-shadow: none;
+        }
+
+        .btn-secondary:hover {
+            background: rgba(255, 255, 255, 0.12);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+        }
+
+        footer {
+            margin-top: auto;
+            text-align: center;
+            color: var(--text-muted);
+            font-size: 0.85rem;
+            padding: 20px 0;
+            border-top: 1px solid var(--border-card);
+            width: 100%;
+        }
+
+        footer a {
+            color: var(--accent-primary);
+            text-decoration: none;
+        }
+
+        footer a:hover {
+            text-decoration: underline;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <div class="badge">
+                <span class="badge-dot"></span>
+                <span>Farm Junction QA & Automation</span>
+            </div>
+            <h1>Automation & Performance Reports</h1>
+            <p class="subtitle">Centralized dashboard for JMeter performance benchmarks, Allure regression runs, and system analysis.</p>
+        </header>
+
+        <div class="section-title">
+            <span>⚡</span>
+            <span>JMeter Performance Test Reports</span>
+        </div>
+        <div class="grid">
+            <div class="card">
+                <div>
+                    <div class="card-header">
+                        <span class="card-tag tag-jmeter">JMeter HTML</span>
+                    </div>
+                    <h2 class="card-title">Fetch All Leads Details</h2>
+                    <p class="card-desc">Interactive Apache JMeter dashboard report with APDEX scores, response time percentiles, throughput charts, and request error metrics.</p>
+                </div>
+                <a href="./reports/FetchAllLeadsDetails_HTML/index.html" class="btn-link">
+                    Open HTML Report &rarr;
+                </a>
+            </div>
+
+            <div class="card">
+                <div>
+                    <div class="card-header">
+                        <span class="card-tag tag-jmeter">JMeter HTML</span>
+                    </div>
+                    <h2 class="card-title">Master Data</h2>
+                    <p class="card-desc">Performance metrics and latency analysis for Master Data APIs, including load duration curves, transactions/sec, and error breakdowns.</p>
+                </div>
+                <a href="./reports/MasterData_HTML/index.html" class="btn-link">
+                    Open HTML Report &rarr;
+                </a>
+            </div>
+        </div>
+
+        <div class="section-title">
+            <span>📊</span>
+            <span>Regression & System Analysis</span>
+        </div>
+        <div class="grid">
+            <div class="card">
+                <div>
+                    <div class="card-header">
+                        <span class="card-tag tag-allure">Allure Run</span>
+                    </div>
+                    <h2 class="card-title">Latest Regression Run</h2>
+                    <p class="card-desc">Full suite Cypress automation test execution history with step-by-step logs and execution breakdown.</p>
+                </div>
+                <a href="./reports/2026-10-08_18-09-50/index.html" class="btn-link btn-secondary">
+                    View Run 2026-10-08 &rarr;
+                </a>
+            </div>
+
+            <div class="card">
+                <div>
+                    <div class="card-header">
+                        <span class="card-tag tag-analysis">Database</span>
+                    </div>
+                    <h2 class="card-title">DB Schema Analysis</h2>
+                    <p class="card-desc">Comprehensive database schema inspection, tables, entity relations, and structural analysis report.</p>
+                </div>
+                <a href="./db-schema-analysis.html" class="btn-link btn-secondary">
+                    View DB Schema &rarr;
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <footer>
+        <p>Published via GitHub Pages &bull; <a href="https://github.com/pratyush-tractorjunction/finj-automation-reports" target="_blank" rel="noopener">pratyush-tractorjunction/finj-automation-reports</a></p>
+    </footer>
+</body>
+</html>

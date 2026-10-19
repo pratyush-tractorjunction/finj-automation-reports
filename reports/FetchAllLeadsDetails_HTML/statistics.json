@@ -1,0 +1,34 @@
+{
+  "Total" : {
+    "transaction" : "Total",
+    "sampleCount" : 2000,
+    "errorCount" : 0,
+    "errorPct" : 0.0,
+    "meanResTime" : 215.69699999999992,
+    "medianResTime" : 202.0,
+    "minResTime" : 40.0,
+    "maxResTime" : 1011.0,
+    "pct1ResTime" : 359.0,
+    "pct2ResTime" : 426.0,
+    "pct3ResTime" : 576.96,
+    "throughput" : 170.4593880507969,
+    "receivedKBytesPerSec" : 285.1903751704594,
+    "sentKBytesPerSec" : 189.60277635728286
+  },
+  "Fetch Lead Details" : {
+    "transaction" : "Fetch Lead Details",
+    "sampleCount" : 2000,
+    "errorCount" : 0,
+    "errorPct" : 0.0,
+    "meanResTime" : 215.69699999999992,
+    "medianResTime" : 202.0,
+    "minResTime" : 40.0,
+    "maxResTime" : 1011.0,
+    "pct1ResTime" : 359.0,
+    "pct2ResTime" : 426.0,
+    "pct3ResTime" : 576.96,
+    "throughput" : 170.4593880507969,
+    "receivedKBytesPerSec" : 285.1903751704594,
+    "sentKBytesPerSec" : 189.60277635728286
+  }
+}
